@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
+
 
 void main() {
   runApp(const MyApp());
@@ -6,12 +8,11 @@ void main() {
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
-
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Optik Okuyucu',
       theme: ThemeData(
         // This is the theme of your application.
         //
@@ -31,12 +32,30 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: const MyHomePage(title: 'Optik Okuyucu'),
     );
   }
 }
 
 class MyHomePage extends StatefulWidget {
+  
+
+  // final RecognizedText recognizedText = await textRecognizer.processImage(inputImage);
+
+  // String text = recognizedText.text;
+  // for (TextBlock block in recognizedText.blocks) {
+  //   final Rect rect = block.boundingBox;
+  //   final List<Point<int>> cornerPoints = block.cornerPoints;
+  //   final String text = block.text;
+  //   final List<String> languages = block.recognizedLanguages;
+    
+  //   for (TextLine line in block.lines) {
+  //     // Same getters as TextBlock
+  //     for (TextElement element in line.elements) {
+  //       // Same getters as TextBlock
+  //     }
+  //   }
+  // }
   const MyHomePage({super.key, required this.title});
 
   // This widget is the home page of your application. It is stateful, meaning

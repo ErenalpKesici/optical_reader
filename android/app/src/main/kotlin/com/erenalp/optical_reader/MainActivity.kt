@@ -1,4 +1,4 @@
-package com.example.optical_reader
+package com.erenalp.optical_reader
 
 import io.flutter.embedding.android.FlutterActivity
 

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "739862643464",
+    "project_id": "optical-reader-16bd7",
+    "storage_bucket": "optical-reader-16bd7.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:739862643464:android:e6afae4c245e37503de2bd",
+        "android_client_info": {
+          "package_name": "com.erenalp.optical_reader"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAUzNb3Meq_95lAz1k7ExN81EGL5e_xfFU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
