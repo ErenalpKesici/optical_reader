@@ -1,34 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
+import 'package:camera/camera.dart';
+import 'package:sqflite/sqflite.dart';
+import 'package:path/path.dart';
 
+import 'database_helper.dart';
 
-void main() {
+List<CameraDescription> cameras = [];
+var dbHelper = DatabaseHelper();
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await dbHelper.init();
   runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-  // This widget is the root of your application.
+  const MyApp({Key? key}) : super(key: key);
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Optik Okuyucu',
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
@@ -37,108 +31,303 @@ class MyApp extends StatelessWidget {
   }
 }
 
+Future<Database> openMyDatabase() async {
+  final dbPath = await getDatabasesPath();
+  final path = join(dbPath, 'my_database.db');
+  final database = await openDatabase(
+    path,
+    version: 1,
+    onCreate: (db, version) async {
+      // Create tables here
+    },
+  );
+  return database;
+}
+
 class MyHomePage extends StatefulWidget {
-  
-
-  // final RecognizedText recognizedText = await textRecognizer.processImage(inputImage);
-
-  // String text = recognizedText.text;
-  // for (TextBlock block in recognizedText.blocks) {
-  //   final Rect rect = block.boundingBox;
-  //   final List<Point<int>> cornerPoints = block.cornerPoints;
-  //   final String text = block.text;
-  //   final List<String> languages = block.recognizedLanguages;
-    
-  //   for (TextLine line in block.lines) {
-  //     // Same getters as TextBlock
-  //     for (TextElement element in line.elements) {
-  //       // Same getters as TextBlock
-  //     }
-  //   }
-  // }
-  const MyHomePage({super.key, required this.title});
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
+  const MyHomePage({Key? key, required this.title}) : super(key: key);
 
   final String title;
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  _MyHomePageState createState() => _MyHomePageState();
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+  List<Map<String, dynamic>> testList = [];
 
-  void _incrementCounter() {
+  @override
+  void initState() {
+    super.initState();
+    dbHelper.getRows(table: 'tests').then((value) {
+      setState(() {
+        testList = value;
+      });
+    });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    refreshTestList();
+  }
+
+  Future<void> refreshTestList() async {
+    final updatedList = await dbHelper.getRows(table: 'tests');
     setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
+      testList = updatedList;
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
     return Scaffold(
       appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
         title: Text(widget.title),
       ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text(
-              'You have pushed the button this many times:',
+      body: ListView.builder(
+        itemCount: testList.length,
+        itemBuilder: (context, index) {
+          int id = testList[index]['id'];
+          return Card(
+            child: ListTile(
+              title: Text(testList[index]['name']),
+              subtitle:
+                  Text('Soru Sayısı: ${testList[index]['question_count']}'),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    onPressed: () {
+                      Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => DetailsPage(id: id)))
+                          .then((value) => refreshTestList());
+                    },
+                    icon: const Icon(Icons.edit),
+                  ),
+                  IconButton(
+                    onPressed: () {
+                      showDialog(
+                        context: context,
+                        builder: (BuildContext context) {
+                          return AlertDialog(
+                            title: Text('Silme İşlemini Onayla'),
+                            content: Text(
+                                '${testList[index]['name']} adlı testi silmek istediğinizden emin misiniz?'),
+                            actions: [
+                              TextButton(
+                                onPressed: () async {
+                                  await dbHelper.delete('tests', id);
+                                  Navigator.of(context).pop();
+                                  refreshTestList();
+                                },
+                                child: Text('Sil'),
+                              ),
+                              TextButton(
+                                onPressed: () {
+                                  Navigator.of(context).pop();
+                                },
+                                child: Text('İptal'),
+                              ),
+                            ],
+                          );
+                        },
+                      );
+                    },
+                    icon: const Icon(Icons.delete),
+                  ),
+                ],
+              ),
             ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-          ],
-        ),
+          );
+        },
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
+        onPressed: () {
+          Navigator.push(context,
+                  MaterialPageRoute(builder: (context) => DetailsPage()))
+              .then((value) {
+            if (value == true) {
+              refreshTestList();
+            }
+          });
+        },
         tooltip: 'Increment',
         child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
+      ),
+    );
+  }
+}
+
+class DetailsPage extends StatefulWidget {
+  final int? id;
+
+  DetailsPage({Key? key, this.id}) : super(key: key);
+
+  @override
+  _DetailsPageState createState() => _DetailsPageState();
+}
+
+class _DetailsPageState extends State<DetailsPage> {
+  final TextEditingController nameController = TextEditingController();
+  final TextEditingController questionCountController = TextEditingController();
+
+  var answerValues = [];
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.id != null) {
+      dbHelper
+          .getRows(table: 'tests', where: 'id = ' + widget.id.toString())
+          .then((value) {
+        setState(() {
+          nameController.text = value[0]['name'];
+          questionCountController.text = value[0]['question_count'].toString();
+        });
+      });
+    }
+    answerValues = List<String?>.filled(123, null);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Details Page'),
+      ),
+      body: Padding(
+        padding: EdgeInsets.all(16.0),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              TextField(
+                controller: nameController,
+                decoration: InputDecoration(
+                  labelText: 'Adı',
+                ),
+              ),
+              SizedBox(height: 16),
+              TextField(
+                controller: questionCountController,
+                decoration: InputDecoration(
+                  labelText: 'Soru Sayısı',
+                ),
+                keyboardType: TextInputType.number,
+              ),
+              SizedBox(height: 16),
+              Center(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    widget.id != null
+                        ? ElevatedButton(
+                            onPressed: () async {
+                              final cameras = await availableCameras();
+                              final firstCamera = cameras.first;
+
+                              final cameraController = CameraController(
+                                firstCamera,
+                                ResolutionPreset.medium,
+                              );
+
+                              await cameraController.initialize();
+
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      CameraPreview(cameraController),
+                                ),
+                              );
+                            },
+                            child: const Icon(Icons.camera),
+                          )
+                        : const SizedBox(),
+                    widget.id != null
+                        ? ElevatedButton(
+                            onPressed: () {
+                              int questionCount =
+                                  int.tryParse(questionCountController.text) ??
+                                      0;
+                              showModalBottomSheet(
+                                context: context,
+                                builder: (BuildContext context) {
+                                  return StatefulBuilder(
+                                    builder: (BuildContext context,
+                                        StateSetter setState) {
+                                      return ListView.builder(
+                                        itemCount: questionCount,
+                                        itemBuilder: (context, index) {
+                                          return ListTile(
+                                            title: Text('Soru ${index + 1}'),
+                                            trailing: DropdownButton<String>(
+                                              value: answerValues[index],
+                                              hint: const Text('Doğru Cevap'),
+                                              onChanged: (String? newValue) {
+                                                setState(() {
+                                                  answerValues[index] =
+                                                      newValue;
+                                                });
+                                              },
+                                              items: <String>[
+                                                'A',
+                                                'B',
+                                                'C',
+                                                'D',
+                                                'E'
+                                              ].map<DropdownMenuItem<String>>(
+                                                (String value) {
+                                                  return DropdownMenuItem<
+                                                      String>(
+                                                    value: value,
+                                                    child: Text(value),
+                                                  );
+                                                },
+                                              ).toList(),
+                                            ),
+                                          );
+                                        },
+                                      );
+                                    },
+                                  );
+                                },
+                              );
+                            },
+                            child: const Icon(Icons.question_answer),
+                          )
+                        : const SizedBox(),
+                    ElevatedButton(
+                      onPressed: () async {
+                        // Handle form submission
+                        String name = nameController.text;
+                        int questionCount =
+                            int.tryParse(questionCountController.text) ?? 0;
+                        if (widget.id != null) {
+                          await dbHelper.update('tests', {
+                            'id': widget.id,
+                            'name': name,
+                            'question_count': questionCount,
+                          });
+                        } else
+                          await dbHelper.insert('tests', {
+                            'name': name,
+                            'question_count': questionCount,
+                          });
+                        Navigator.pop(context, true);
+                      },
+                      child: const Text('Kaydet'),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
