@@ -1,13 +1,17 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:camera/camera.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
+import 'package:image_picker/image_picker.dart';
 
 import 'database_helper.dart';
 
 List<CameraDescription> cameras = [];
 var dbHelper = DatabaseHelper();
+final textRecognizer = TextRecognizer(script: TextRecognitionScript.latin);
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -192,6 +196,17 @@ class _DetailsPageState extends State<DetailsPage> {
     answerValues = List<String?>.filled(123, null);
   }
 
+  Future<String> getTextFromImage(pickedFile) async {
+    String text = '';
+    if (pickedFile != null) {
+      final image = Image.file(File(pickedFile.path));
+      final RecognizedText recognizedText = await textRecognizer
+          .processImage(InputImage.fromFile(File(pickedFile.path)));
+      text = recognizedText.text;
+    }
+    return text;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -226,25 +241,48 @@ class _DetailsPageState extends State<DetailsPage> {
                     widget.id != null
                         ? ElevatedButton(
                             onPressed: () async {
-                              final cameras = await availableCameras();
-                              final firstCamera = cameras.first;
-
-                              final cameraController = CameraController(
-                                firstCamera,
-                                ResolutionPreset.medium,
+                              final picker = ImagePicker();
+                              final pickedFile = await showDialog<PickedFile>(
+                                context: context,
+                                builder: (BuildContext context) {
+                                  return SimpleDialog(
+                                    title: const Text(
+                                        'Take a photo or choose from gallery'),
+                                    children: <Widget>[
+                                      SimpleDialogOption(
+                                        onPressed: () async {
+                                          final pickedFile =
+                                              await picker.pickImage(
+                                                  source: ImageSource.camera);
+                                          String text = await getTextFromImage(
+                                              pickedFile);
+                                          print(text);
+                                        },
+                                        child: const Text('Take a photo'),
+                                      ),
+                                      SimpleDialogOption(
+                                        onPressed: () async {
+                                          final pickedFile =
+                                              await picker.pickImage(
+                                                  source: ImageSource.gallery);
+                                          String text = await getTextFromImage(
+                                              pickedFile);
+                                          print(text);
+                                        },
+                                        child:
+                                            const Text('Choose from gallery'),
+                                      ),
+                                    ],
+                                  );
+                                },
                               );
 
-                              await cameraController.initialize();
-
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) =>
-                                      CameraPreview(cameraController),
-                                ),
-                              );
+                              if (pickedFile != null) {
+                                final image = Image.file(File(pickedFile.path));
+                                // Do something with the image
+                              }
                             },
-                            child: const Icon(Icons.camera),
+                            child: const Text('Shoot or Select Image'),
                           )
                         : const SizedBox(),
                     widget.id != null
