@@ -29,9 +29,29 @@ class DatabaseHelper {
   Future _onCreate(Database db, int version) async {
     await db.execute('''
           CREATE TABLE tests (
-            $columnId INTEGER PRIMARY KEY,
+            id INTEGER PRIMARY KEY,
             name TEXT NOT NULL,
+            correct_answers TEXT NOT NULL,
             question_count INTEGER NOT NULL
+          )
+          ''');
+
+    await db.execute('''
+            CREATE TABLE student_answers (
+              id INTEGER PRIMARY KEY,
+              student_id INTEGER,
+              test_id INTEGER,
+              question_id INTEGER,
+              results TEXT NOT NULL,
+              FOREIGN KEY(student_id) REFERENCES students(id),
+              FOREIGN KEY(test_id) REFERENCES tests(id)
+            )
+          ''');
+
+    await db.execute('''
+          CREATE TABLE students (
+            id INTEGER PRIMARY KEY,
+            name TEXT NOT NULL
           )
           ''');
   }

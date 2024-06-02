@@ -1,18 +1,26 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
+// import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:camera/camera.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_tesseract_ocr/flutter_tesseract_ocr.dart';
 import 'database_helper.dart';
+import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
+import 'package:flutter_tesseract_ocr/flutter_tesseract_ocr.dart';
+import 'package:google_ml_kit/google_ml_kit.dart';
+
+import 'students.dart';
 
 List<CameraDescription> cameras = [];
 var dbHelper = DatabaseHelper();
 final textRecognizer = TextRecognizer(script: TextRecognitionScript.latin);
 
+List<String> answer_options = ['A', 'B', 'C', 'D', 'E'];
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dbHelper.init();
@@ -26,11 +34,12 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Optik Okuyucu',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: const MyHomePage(title: 'Optik Okuyucu'),
+      home: const MyHomePage(title: 'Optik Okuyucu - Testler'),
     );
   }
 }
@@ -95,73 +104,96 @@ class _MyHomePageState extends State<MyHomePage> {
           int id = testList[index]['id'];
           return Card(
             child: ListTile(
-              title: Text(testList[index]['name']),
-              subtitle:
-                  Text('Soru Sayısı: ${testList[index]['question_count']}'),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    onPressed: () {
-                      Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (context) => DetailsPage(id: id)))
-                          .then((value) => refreshTestList());
-                    },
-                    icon: const Icon(Icons.edit),
-                  ),
-                  IconButton(
-                    onPressed: () {
-                      Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (context) => DetailsPage(id: id)))
-                          .then((value) => refreshTestList());
-                    },
-                    icon: const Icon(Icons.edit),
-                  ),
-                  IconButton(
-                    onPressed: () {
-                      showDialog(
-                        context: context,
-                        builder: (BuildContext context) {
-                          return AlertDialog(
-                            title: Text('Silme İşlemini Onayla'),
-                            content: Text(
-                                '${testList[index]['name']} adlı testi silmek istediğinizden emin misiniz?'),
-                            actions: [
-                              TextButton(
-                                onPressed: () async {
-                                  await dbHelper.delete('tests', id);
-                                  Navigator.of(context).pop();
-                                  refreshTestList();
-                                },
-                                child: Text('Sil'),
-                              ),
-                              TextButton(
-                                onPressed: () {
-                                  Navigator.of(context).pop();
-                                },
-                                child: Text('İptal'),
-                              ),
-                            ],
-                          );
-                        },
-                      );
-                    },
-                    icon: const Icon(Icons.delete),
-                  ),
-                ],
-              ),
-            ),
+                title: Text(testList[index]['name']),
+                subtitle: Text('${testList[index]['question_count']} Soru'),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    ElevatedButton.icon(
+                      style: ButtonStyle(
+                        backgroundColor: MaterialStateProperty.all<Color>(
+                            Colors.white), // Set the background color here
+                      ),
+                      onPressed: () {
+                        Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) =>
+                                        StudentsPage(testId: id)))
+                            .then((value) => refreshTestList());
+                      },
+                      icon: Icon(Icons.person),
+                      label: Text('Öğrenciler'),
+                    ),
+                    Padding(
+                      padding:
+                          const EdgeInsets.only(left: 2), // Add padding here
+                      child: Material(
+                        elevation: 1,
+                        borderRadius: BorderRadius.circular(100),
+                        color: Colors.blue.withOpacity(0.5),
+                        child: IconButton(
+                          onPressed: () {
+                            Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                        builder: (context) =>
+                                            TestDetailsPage(id: id)))
+                                .then((value) => refreshTestList());
+                          },
+                          icon: const Icon(Icons.edit, color: Colors.white),
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding:
+                          const EdgeInsets.only(left: 2), // Add padding here
+                      child: Material(
+                        elevation: 1,
+                        borderRadius: BorderRadius.circular(100),
+                        color: Colors.red.withOpacity(0.5),
+                        child: IconButton(
+                          onPressed: () {
+                            showDialog(
+                              context: context,
+                              builder: (BuildContext context) {
+                                return AlertDialog(
+                                  title: Text('Silme İşlemini Onayla'),
+                                  content: Text(
+                                      '${testList[index]['name']} adlı testi silmek istediğinizden emin misiniz?'),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () async {
+                                        await dbHelper.delete('tests', id);
+                                        Navigator.of(context).pop();
+                                        refreshTestList();
+                                      },
+                                      child: Text('Sil'),
+                                    ),
+                                    TextButton(
+                                      onPressed: () {
+                                        Navigator.of(context).pop();
+                                      },
+                                      child: Text('İptal'),
+                                    ),
+                                  ],
+                                );
+                              },
+                            );
+                          },
+                          icon: const Icon(Icons.delete, color: Colors.white),
+                        ),
+                      ),
+                    ),
+                  ],
+                )),
           );
         },
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           Navigator.push(context,
-                  MaterialPageRoute(builder: (context) => DetailsPage()))
+                  MaterialPageRoute(builder: (context) => TestDetailsPage()))
               .then((value) {
             if (value == true) {
               refreshTestList();
@@ -175,16 +207,16 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 }
 
-class DetailsPage extends StatefulWidget {
+class TestDetailsPage extends StatefulWidget {
   final int? id;
 
-  DetailsPage({Key? key, this.id}) : super(key: key);
+  TestDetailsPage({Key? key, this.id}) : super(key: key);
 
   @override
-  _DetailsPageState createState() => _DetailsPageState();
+  _TestDetailsPageState createState() => _TestDetailsPageState();
 }
 
-class _DetailsPageState extends State<DetailsPage> {
+class _TestDetailsPageState extends State<TestDetailsPage> {
   final TextEditingController nameController = TextEditingController();
   final TextEditingController questionCountController = TextEditingController();
 
@@ -200,47 +232,19 @@ class _DetailsPageState extends State<DetailsPage> {
         setState(() {
           nameController.text = value[0]['name'];
           questionCountController.text = value[0]['question_count'].toString();
+          answerValues = jsonDecode(value[0]['correct_answers']);
         });
       });
+    } else {
+      answerValues = List<String?>.filled(100, null);
     }
-    answerValues = List<String?>.filled(123, null);
-  }
-
-  Future<String> getTextFromImage(pickedFile) async {
-    Map<String, String> answers = {};
-    String text = '';
-    if (pickedFile != null) {
-      // text = await FlutterTesseractOcr.extractText(pickedFile.path);
-
-      final image = Image.file(File(pickedFile.path));
-      final RecognizedText recognizedText = await textRecognizer
-          .processImage(InputImage.fromFile(File(pickedFile.path)));
-      text = recognizedText.text;
-    print(answers);
-      List<String> lines = text.split('\n');
-
-      // Process each line
-      for (String line in lines) {
-        // Split the line into words
-        List<String> words = line.split(' ');
-
-        // Check if the line represents an answer
-        if (words.length >= 2 &&
-            ['a', 'b', 'c', 'd'].contains(words[0].toLowerCase())) {
-          // The first word is the answer letter, the second word is the answer value
-          answers[words[0].toLowerCase()] = words[1];
-        }
-      }
-    }
-    print(answers);
-    return text;
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Details Page'),
+        title: Text(nameController.text),
       ),
       body: Padding(
         padding: EdgeInsets.all(16.0),
@@ -266,59 +270,9 @@ class _DetailsPageState extends State<DetailsPage> {
               Center(
                 child: SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
-                  child: Row(
+                  child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      widget.id != null
-                          ? ElevatedButton(
-                              onPressed: () async {
-                                final picker = ImagePicker();
-                                final pickedFile = await showDialog<PickedFile>(
-                                  context: context,
-                                  builder: (BuildContext context) {
-                                    return SimpleDialog(
-                                      title: const Text(
-                                          'Fotoğraf çek veya galeriden seç'),
-                                      children: <Widget>[
-                                        SimpleDialogOption(
-                                          onPressed: () async {
-                                            final pickedFile =
-                                                await picker.pickImage(
-                                                    source: ImageSource.camera);
-                                            String text =
-                                                await getTextFromImage(
-                                                    pickedFile);
-                                            print(text);
-                                          },
-                                          child: const Text('Fotoğraf çek'),
-                                        ),
-                                        SimpleDialogOption(
-                                          onPressed: () async {
-                                            final pickedFile =
-                                                await picker.pickImage(
-                                                    source:
-                                                        ImageSource.gallery);
-                                            String text =
-                                                await getTextFromImage(
-                                                    pickedFile);
-                                            print(text);
-                                          },
-                                          child: const Text('Galeriden seç'),
-                                        ),
-                                      ],
-                                    );
-                                  },
-                                );
-
-                                if (pickedFile != null) {
-                                  final image =
-                                      Image.file(File(pickedFile.path));
-                                  // Do something with the image
-                                }
-                              },
-                              child: const Text('Fotoğraf Oku'),
-                            )
-                          : const SizedBox(),
                       widget.id != null
                           ? ElevatedButton(
                               onPressed: () {
@@ -331,7 +285,7 @@ class _DetailsPageState extends State<DetailsPage> {
                                     builder: (BuildContext context) {
                                       return AlertDialog(
                                         title: Text('Uyarı'),
-                                        content: Text(
+                                        content: const Text(
                                             'Soru bulunamadı. Önce soru sayısını girin.'),
                                         actions: [
                                           TextButton(
@@ -366,13 +320,8 @@ class _DetailsPageState extends State<DetailsPage> {
                                                         newValue;
                                                   });
                                                 },
-                                                items: <String>[
-                                                  'A',
-                                                  'B',
-                                                  'C',
-                                                  'D',
-                                                  'E'
-                                                ].map<DropdownMenuItem<String>>(
+                                                items: answer_options.map<
+                                                    DropdownMenuItem<String>>(
                                                   (String value) {
                                                     return DropdownMenuItem<
                                                         String>(
@@ -390,7 +339,7 @@ class _DetailsPageState extends State<DetailsPage> {
                                   },
                                 );
                               },
-                              child: const Icon(Icons.question_answer),
+                              child: const Text('Doğru Cevaplar'),
                             )
                           : const SizedBox(),
                       ElevatedButton(
@@ -404,12 +353,15 @@ class _DetailsPageState extends State<DetailsPage> {
                               'id': widget.id,
                               'name': name,
                               'question_count': questionCount,
+                              'correct_answers': jsonEncode(answerValues),
                             });
-                          } else
+                          } else {
                             await dbHelper.insert('tests', {
                               'name': name,
                               'question_count': questionCount,
+                              'correct_answers': jsonEncode(answerValues),
                             });
+                          }
                           Navigator.pop(context, true);
                         },
                         child: const Text('Kaydet'),
