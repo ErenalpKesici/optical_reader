@@ -10,7 +10,7 @@ Future<File> processImage(File file) async {
   final processedImage = img.grayscale(originalImage!);
   final processedFile = File(file.path)
     ..writeAsBytesSync(img.encodeJpg(processedImage));
-  return processedFile;
+  return file;
 }
 
 Future<String> insertAnswersFromImage(pickedFile, studentId, testId) async {
@@ -38,14 +38,17 @@ Future<String> insertAnswersFromImage(pickedFile, studentId, testId) async {
       }
     }
     textRecognizer.close();
-
     List<Map<String, dynamic>> results = [];
     for (int i = 0; i < questions.length; i++) {
+      if (i >= answers.length) {
+        continue;
+      }
       results.add({
         'question': questions[i],
         'answer': answers[i],
       });
     }
+    results.sort((a, b) => a['question'].compareTo(b['question']));
     print(results.toString());
     await dbHelper.insert('student_answers', {
       'student_id': studentId,

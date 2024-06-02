@@ -114,7 +114,10 @@ class _StudentsPageState extends State<StudentsPage> {
                                   actions: [
                                     TextButton(
                                       onPressed: () async {
-                                        await dbHelper.delete('students', id);
+                                        await dbHelper
+                                            .delete('students', 'id=?', [id]);
+                                        await dbHelper.delete('student_answers',
+                                            'student_id=?', [id]);
                                         Navigator.of(context).pop();
                                         refreshstudentList();
                                       },
@@ -140,7 +143,7 @@ class _StudentsPageState extends State<StudentsPage> {
           );
         },
       ),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
           Navigator.push(context,
                   MaterialPageRoute(builder: (context) => StudentDetailsPage()))
@@ -150,8 +153,8 @@ class _StudentsPageState extends State<StudentsPage> {
             }
           });
         },
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
+        icon: const Icon(Icons.add),
+        label: const Text('Yeni Öğrenci Ekle'),
       ),
     );
   }
@@ -185,7 +188,8 @@ class _StudentDetailsPageState extends State<StudentDetailsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Student Details'),
+        title: Text(
+            nameController.text == '' ? 'Yeni Öğrenci' : nameController.text),
       ),
       body: Padding(
         padding: EdgeInsets.all(16.0),
@@ -196,7 +200,7 @@ class _StudentDetailsPageState extends State<StudentDetailsPage> {
               TextField(
                 controller: nameController,
                 decoration: InputDecoration(
-                  labelText: 'Name',
+                  labelText: 'İsim',
                 ),
               ),
               ElevatedButton(
@@ -215,7 +219,7 @@ class _StudentDetailsPageState extends State<StudentDetailsPage> {
                     Navigator.pop(context, true);
                   }
                 },
-                child: Text('Save'),
+                child: Text('Kaydet'),
               ),
             ],
           ),
@@ -241,6 +245,11 @@ class _StudentAnswersPageState extends State<StudentAnswersPage> {
   List<String> answers = [];
   List<dynamic> correctAnswers = [];
 
+  int correctAnswerCount = 0;
+  int wrongAnswerCount = 0;
+  int emptyAnswerCount = 0;
+  int score = 0;
+
   @override
   void initState() {
     super.initState();
@@ -258,13 +267,32 @@ class _StudentAnswersPageState extends State<StudentAnswersPage> {
       correctAnswers = jsonDecode(tests[0]['correct_answers']);
     }
     if (studentAnswers.isNotEmpty) {
-      final resultsString = studentAnswers[0]['results'];
-      final results = jsonDecode(resultsString);
-      for (var result in results) {
-        questions.add(result['question']);
-        answers.add(result['answer']);
+      for (var studentAnswer in studentAnswers) {
+        final resultsString = studentAnswer['results'];
+        final results = jsonDecode(resultsString);
+        if (results.isEmpty)
+          continue;
+        else {
+          for (var result in results) {
+            questions.add(result['question']);
+            answers.add(result['answer']);
+          }
+          break;
+        }
       }
     }
+    for (int i = 0; i < questions.length; i++) {
+      if (answers[i] == correctAnswers[i]) {
+        correctAnswerCount++;
+      } else if (answers[i].isEmpty) {
+        emptyAnswerCount++;
+      } else {
+        wrongAnswerCount++;
+      }
+    }
+    score = correctAnswerCount *
+        100 ~/
+        (questions.length < 1 ? 1 : questions.length);
     setState(() {});
   }
 
@@ -293,6 +321,10 @@ class _StudentAnswersPageState extends State<StudentAnswersPage> {
                                   source: ImageSource.camera);
                               await insertAnswersFromImage(
                                   pickedFile, widget.studentId, widget.testId);
+                              Navigator.pop(context);
+                              setState(() {
+                                fetchAnswers();
+                              });
                             },
                             child: const Text('Fotoğraf çek'),
                           ),
@@ -302,6 +334,10 @@ class _StudentAnswersPageState extends State<StudentAnswersPage> {
                                   source: ImageSource.gallery);
                               await insertAnswersFromImage(
                                   pickedFile, widget.studentId, widget.testId);
+                              Navigator.pop(context);
+                              setState(() {
+                                fetchAnswers();
+                              });
                             },
                             child: const Text('Galeriden seç'),
                           ),
@@ -311,36 +347,59 @@ class _StudentAnswersPageState extends State<StudentAnswersPage> {
                   );
                 },
                 child: const Text('Fotoğraf Okut')),
-            Expanded(
-              child: SingleChildScrollView(
-                scrollDirection: Axis.vertical,
-                child: DataTable(
-                  columns: const <DataColumn>[
-                    DataColumn(
-                      label: Text(
-                        'Soru #',
-                        style: TextStyle(fontStyle: FontStyle.italic),
-                      ),
+            if (questions.isNotEmpty) const Divider(),
+            if (questions.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        Text('Doğru Cevap: $correctAnswerCount'),
+                        Text('Yanlış Cevap: $wrongAnswerCount'),
+                      ],
                     ),
-                    DataColumn(
-                      label: Text(
-                        'Cevap',
-                        style: TextStyle(fontStyle: FontStyle.italic),
-                      ),
-                    ),
-                    DataColumn(
-                      label: Text('Doğru Cevap',
-                          style: TextStyle(fontStyle: FontStyle.italic)),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        Text('Puan: %$score'),
+                      ],
                     ),
                   ],
-                  rows: List<DataRow>.generate(
-                    questions.length,
-                    (index) => generateDataRow(
-                        index, questions, answers, correctAnswers),
-                  ),
                 ),
               ),
-            )
+            if (questions.isNotEmpty)
+              Expanded(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.vertical,
+                  child: DataTable(
+                    columns: const <DataColumn>[
+                      DataColumn(
+                        label: Text(
+                          'Soru #',
+                          style: TextStyle(fontStyle: FontStyle.italic),
+                        ),
+                      ),
+                      DataColumn(
+                        label: Text(
+                          'Cevap',
+                          style: TextStyle(fontStyle: FontStyle.italic),
+                        ),
+                      ),
+                      DataColumn(
+                        label: Text('Doğru Cevap',
+                            style: TextStyle(fontStyle: FontStyle.italic)),
+                      ),
+                    ],
+                    rows: List<DataRow>.generate(
+                      questions.length,
+                      (index) => generateDataRow(
+                          index, questions, answers, correctAnswers),
+                    ),
+                  ),
+                ),
+              )
           ],
         ),
       ),
@@ -350,23 +409,31 @@ class _StudentAnswersPageState extends State<StudentAnswersPage> {
 
 DataRow generateDataRow(int index, List<String> questions, List<String> answers,
     List<dynamic> correctAnswers) {
-  // You can run any code here before creating each DataCell
-
   final correctAnswer = correctAnswers[index] ?? '';
-
   return DataRow(
+    color: MaterialStateColor.resolveWith((states) {
+      if (answers[index] == correctAnswer) {
+        return Colors.green.withOpacity(0.3);
+      } else {
+        return Colors.transparent;
+      }
+    }),
     cells: <DataCell>[
-      DataCell(Text(questions[index])),
       DataCell(
-        Row(
-          children: [
-            Text(answers[index]),
-            if (answers[index] == correctAnswer)
-              Icon(Icons.check, color: Colors.green),
-          ],
+        Container(
+          child: Text(questions[index]),
         ),
       ),
-      DataCell(Text(correctAnswer)),
+      DataCell(
+        Container(
+          child: Text(answers[index]),
+        ),
+      ),
+      DataCell(
+        Container(
+          child: Text(correctAnswer),
+        ),
+      ),
     ],
   );
 }

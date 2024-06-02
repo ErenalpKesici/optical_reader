@@ -96,11 +96,7 @@ class DatabaseHelper {
 
   // Deletes the row specified by the id. The number of affected rows is
   // returned. This should be 1 as long as the row exists.
-  Future<int> delete(String table, int id) async {
-    return await _db.delete(
-      table,
-      where: '$columnId = ?',
-      whereArgs: [id],
-    );
+  Future<int> delete(String table, String where, List args) async {
+    return await _db.delete(table, where: where, whereArgs: args);
   }
 }

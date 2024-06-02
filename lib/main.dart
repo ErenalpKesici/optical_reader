@@ -122,7 +122,7 @@ class _MyHomePageState extends State<MyHomePage> {
                                         StudentsPage(testId: id)))
                             .then((value) => refreshTestList());
                       },
-                      icon: Icon(Icons.person),
+                      icon: Icon(Icons.school),
                       label: Text('Öğrenciler'),
                     ),
                     Padding(
@@ -164,7 +164,10 @@ class _MyHomePageState extends State<MyHomePage> {
                                   actions: [
                                     TextButton(
                                       onPressed: () async {
-                                        await dbHelper.delete('tests', id);
+                                        await dbHelper
+                                            .delete('tests', 'id=?', [id]);
+                                        await dbHelper.delete('student_answers',
+                                            'test_id=?', [id]);
                                         Navigator.of(context).pop();
                                         refreshTestList();
                                       },
@@ -190,7 +193,7 @@ class _MyHomePageState extends State<MyHomePage> {
           );
         },
       ),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
           Navigator.push(context,
                   MaterialPageRoute(builder: (context) => TestDetailsPage()))
@@ -201,7 +204,8 @@ class _MyHomePageState extends State<MyHomePage> {
           });
         },
         tooltip: 'Increment',
-        child: const Icon(Icons.add),
+        icon: const Icon(Icons.add),
+        label: Text('Yeni Test Ekle'),
       ),
     );
   }
@@ -244,7 +248,8 @@ class _TestDetailsPageState extends State<TestDetailsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(nameController.text),
+        title:
+            Text(nameController.text == '' ? 'Yeni Test' : nameController.text),
       ),
       body: Padding(
         padding: EdgeInsets.all(16.0),
