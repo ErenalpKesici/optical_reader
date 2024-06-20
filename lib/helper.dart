@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:image/image.dart' as img;
 import 'package:google_ml_kit/google_ml_kit.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:optical_reader/main.dart';
 
 Future<File> processImage(File file) async {

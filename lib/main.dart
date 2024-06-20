@@ -6,12 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:flutter_tesseract_ocr/flutter_tesseract_ocr.dart';
 import 'database_helper.dart';
-import 'package:http/http.dart' as http;
-import 'package:http_parser/http_parser.dart';
-import 'package:flutter_tesseract_ocr/flutter_tesseract_ocr.dart';
 import 'package:google_ml_kit/google_ml_kit.dart';
 
 import 'students.dart';
