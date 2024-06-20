@@ -26,6 +26,9 @@ Future<String> insertAnswersFromImage(pickedFile, studentId, testId) async {
     List<String> questions = [];
     List<String> answers = [];
     List<String> lines = text.split('\n');
+
+    final test = await dbHelper.getRow(table: 'tests', where: 'id = $testId');
+
     for (String line in lines) {
       line = line.trim();
       if (line.isEmpty) {
@@ -39,16 +42,14 @@ Future<String> insertAnswersFromImage(pickedFile, studentId, testId) async {
     }
     textRecognizer.close();
     List<Map<String, dynamic>> results = [];
-    for (int i = 0; i < questions.length; i++) {
-      if (i >= answers.length) {
-        continue;
-      }
+    for (int i = 0; i < test['question_count']; i++) {
       results.add({
-        'question': questions[i],
-        'answer': answers[i],
+        'question': i < questions.length ? questions[i] : (i + 1).toString(),
+        'answer': i < answers.length ? answers[i] : '-',
       });
     }
-    results.sort((a, b) => a['question'].compareTo(b['question']));
+    results.sort(
+        (a, b) => int.parse(a['question']).compareTo(int.parse(b['question'])));
     print(results.toString());
     await dbHelper.insert('student_answers', {
       'student_id': studentId,

@@ -260,7 +260,7 @@ class _TestDetailsPageState extends State<TestDetailsPage> {
               TextField(
                 controller: nameController,
                 decoration: InputDecoration(
-                  labelText: 'Adı',
+                  labelText: 'Test Adı',
                 ),
               ),
               SizedBox(height: 16),
@@ -344,7 +344,7 @@ class _TestDetailsPageState extends State<TestDetailsPage> {
                                   },
                                 );
                               },
-                              child: const Text('Doğru Cevaplar'),
+                              child: const Text('Doğru Cevapları Düzenle'),
                             )
                           : const SizedBox(),
                       ElevatedButton(

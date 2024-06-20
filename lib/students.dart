@@ -50,6 +50,18 @@ class _StudentsPageState extends State<StudentsPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Öğrenciler'),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.bar_chart),
+            onPressed: () {
+              Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) =>
+                          TestResultsPage(testId: widget.testId)));
+            },
+          ),
+        ],
       ),
       body: ListView.builder(
         itemCount: studentList.length,
@@ -200,7 +212,7 @@ class _StudentDetailsPageState extends State<StudentDetailsPage> {
               TextField(
                 controller: nameController,
                 decoration: InputDecoration(
-                  labelText: 'İsim',
+                  labelText: 'Öğrenci İsmi',
                 ),
               ),
               ElevatedButton(
@@ -250,9 +262,12 @@ class _StudentAnswersPageState extends State<StudentAnswersPage> {
   int emptyAnswerCount = 0;
   int score = 0;
 
+  String studentName = '';
+
   @override
   void initState() {
     super.initState();
+
     fetchAnswers();
   }
 
@@ -270,9 +285,9 @@ class _StudentAnswersPageState extends State<StudentAnswersPage> {
       for (var studentAnswer in studentAnswers) {
         final resultsString = studentAnswer['results'];
         final results = jsonDecode(resultsString);
-        if (results.isEmpty)
+        if (results.isEmpty) {
           continue;
-        else {
+        } else {
           for (var result in results) {
             questions.add(result['question']);
             answers.add(result['answer']);
@@ -298,55 +313,106 @@ class _StudentAnswersPageState extends State<StudentAnswersPage> {
 
   @override
   Widget build(BuildContext context) {
+    List<Widget> answersButtons = [
+      ElevatedButton.icon(
+        icon: Icon(Icons.camera_alt),
+        label: Text('Cevapları Oku'),
+        onPressed: () async {
+          final picker = ImagePicker();
+          final pickedFile = await showDialog<PickedFile>(
+            context: context,
+            builder: (BuildContext context) {
+              return SimpleDialog(
+                title: const Text('Fotoğraf çek veya galeriden seç'),
+                children: <Widget>[
+                  SimpleDialogOption(
+                    onPressed: () async {
+                      final pickedFile =
+                          await picker.pickImage(source: ImageSource.camera);
+                      await insertAnswersFromImage(
+                          pickedFile, widget.studentId, widget.testId);
+                      Navigator.pop(context);
+                      setState(() {
+                        fetchAnswers();
+                      });
+                    },
+                    child: const Text('Fotoğraf çek'),
+                  ),
+                  SimpleDialogOption(
+                    onPressed: () async {
+                      final pickedFile =
+                          await picker.pickImage(source: ImageSource.gallery);
+                      await insertAnswersFromImage(
+                          pickedFile, widget.studentId, widget.testId);
+                      Navigator.pop(context);
+                      setState(() {
+                        fetchAnswers();
+                      });
+                    },
+                    child: const Text('Galeriden seç'),
+                  ),
+                ],
+              );
+            },
+          );
+        },
+      ),
+    ];
+    if (questions.length != 0) {
+      answersButtons.add(ElevatedButton.icon(
+        icon: Icon(Icons.delete),
+        label: Text('Cevapları Sil'),
+        onPressed: () async {
+          await dbHelper.delete('student_answers', 'student_id=? AND test_id=?',
+              [widget.studentId, widget.testId]);
+          setState(() {
+            questions = [];
+            answers = [];
+            correctAnswers = [];
+            correctAnswerCount = 0;
+            wrongAnswerCount = 0;
+            emptyAnswerCount = 0;
+            score = 0;
+          });
+        },
+      ));
+    }
     return Scaffold(
       appBar: AppBar(
-        title: Text('Cevapları'),
+        title: Text('Ögrenci Cevapları'),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.info),
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder: (BuildContext context) {
+                  return AlertDialog(
+                    title: Text('Örnek Optik Form Formatı'),
+                    content: Image.asset('assets/example_test.png'),
+                    actions: <Widget>[
+                      TextButton(
+                        child: const Text('Kapat'),
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                        },
+                      ),
+                    ],
+                  );
+                },
+              );
+            },
+          ),
+        ],
       ),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            ElevatedButton(
-                onPressed: () async {
-                  final picker = ImagePicker();
-                  final pickedFile = await showDialog<PickedFile>(
-                    context: context,
-                    builder: (BuildContext context) {
-                      return SimpleDialog(
-                        title: const Text('Fotoğraf çek veya galeriden seç'),
-                        children: <Widget>[
-                          SimpleDialogOption(
-                            onPressed: () async {
-                              final pickedFile = await picker.pickImage(
-                                  source: ImageSource.camera);
-                              await insertAnswersFromImage(
-                                  pickedFile, widget.studentId, widget.testId);
-                              Navigator.pop(context);
-                              setState(() {
-                                fetchAnswers();
-                              });
-                            },
-                            child: const Text('Fotoğraf çek'),
-                          ),
-                          SimpleDialogOption(
-                            onPressed: () async {
-                              final pickedFile = await picker.pickImage(
-                                  source: ImageSource.gallery);
-                              await insertAnswersFromImage(
-                                  pickedFile, widget.studentId, widget.testId);
-                              Navigator.pop(context);
-                              setState(() {
-                                fetchAnswers();
-                              });
-                            },
-                            child: const Text('Galeriden seç'),
-                          ),
-                        ],
-                      );
-                    },
-                  );
-                },
-                child: const Text('Fotoğraf Okut')),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: answersButtons,
+            ),
             if (questions.isNotEmpty) const Divider(),
             if (questions.isNotEmpty)
               Padding(
@@ -360,10 +426,17 @@ class _StudentAnswersPageState extends State<StudentAnswersPage> {
                         Text('Yanlış Cevap: $wrongAnswerCount'),
                       ],
                     ),
+                    SizedBox(height: 10),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
-                        Text('Puan: %$score'),
+                        Text(
+                          'Puanı: $score',
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 20,
+                              color: Theme.of(context).primaryColor),
+                        ),
                       ],
                     ),
                   ],
@@ -409,13 +482,15 @@ class _StudentAnswersPageState extends State<StudentAnswersPage> {
 
 DataRow generateDataRow(int index, List<String> questions, List<String> answers,
     List<dynamic> correctAnswers) {
-  final correctAnswer = correctAnswers[index] ?? '';
+  final correctAnswer = correctAnswers[index] ?? '-';
   return DataRow(
     color: MaterialStateColor.resolveWith((states) {
       if (answers[index] == correctAnswer) {
         return Colors.green.withOpacity(0.3);
+      } else if (correctAnswer != '') {
+        return Colors.red.withOpacity(0.3);
       } else {
-        return Colors.transparent;
+        return Colors.grey.withOpacity(0.3);
       }
     }),
     cells: <DataCell>[
@@ -436,4 +511,84 @@ DataRow generateDataRow(int index, List<String> questions, List<String> answers,
       ),
     ],
   );
+}
+
+class TestResultsPage extends StatefulWidget {
+  final int? testId;
+
+  TestResultsPage({Key? key, this.testId}) : super(key: key);
+
+  @override
+  _TestResultsPageState createState() => _TestResultsPageState();
+}
+
+class _TestResultsPageState extends State<TestResultsPage> {
+  List<Map<String, dynamic>> testResults = [];
+
+  @override
+  void initState() {
+    super.initState();
+    fetchTestResults();
+  }
+
+  void fetchTestResults() async {
+    final testResults = await dbHelper.getJoinRows(
+        tables: ['students', 'student_answers', 'tests'],
+        on: 'students.id = student_answers.student_id AND tests.id = student_answers.test_id',
+        where: 'student_answers.test_id = ${widget.testId}',
+        columns: [
+          'students.name',
+          'student_answers.results',
+          'tests.correct_answers',
+        ]);
+    setState(() {
+      this.testResults = testResults;
+    });
+  }
+
+  int calculateTotalScore(String resultsJson, String correctAnswersJson) {
+    final results = jsonDecode(resultsJson);
+    final correctAnswers = jsonDecode(correctAnswersJson);
+    int score = 0;
+    for (int i = 0; i < results.length; i++) {
+      if (results[i]['answer'] == correctAnswers[i]) {
+        score++;
+      }
+    }
+    double percentage = (score / results.length) * 100;
+    return percentage.toInt();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (testResults.isEmpty) {
+      return Scaffold(
+        appBar: AppBar(
+          title: Text('Test Sonuçları'),
+        ),
+        body: Center(
+          child: Text('Sonuç bulunamadı.'),
+        ),
+      );
+    } else {
+      return Scaffold(
+        appBar: AppBar(
+          title: Text('Test Sonuçları'),
+        ),
+        body: ListView.builder(
+          itemCount: testResults.length,
+          itemBuilder: (context, index) {
+            return Card(
+              child: ListTile(
+                title: Text(testResults[index]['name']),
+                subtitle: Text(
+                  'Puanı: ${calculateTotalScore(testResults[index]['results'], testResults[index]['correct_answers'])}',
+                ),
+              ),
+            );
+          },
+        ),
+      );
+    }
+  }
 }

@@ -75,6 +75,29 @@ class DatabaseHelper {
     return await _db.query(table, where: where);
   }
 
+  Future<Map<String, dynamic>> getRow(
+      {required String table, required String where}) async {
+    List<Map<String, dynamic>> rows = await _db.query(table, where: where);
+    if (rows.isNotEmpty) {
+      return rows.first;
+    } else {
+      throw Exception('No rows found');
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getJoinRows(
+      {required List<String> tables,
+      String on = '',
+      String where = '1',
+      List<String> columns = const ['*']}) async {
+    String joinedTables = tables.join(', ');
+    String columnsString = columns.join(', ');
+    String query = 'SELECT $columnsString FROM $joinedTables';
+    if (on.isNotEmpty) query += ' ON $on';
+    query += ' WHERE $where';
+    return await _db.rawQuery(query);
+  }
+
   // All of the methods (insert, query, update, delete) can also be done using
   // raw SQL commands. This method uses a raw query to give the row count.
   Future<int> queryRowCount() async {
